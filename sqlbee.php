@@ -288,6 +288,7 @@ class sqlbee {
             "' . $this->mysqli->real_escape_string($thermostat['internal_revision']) . '"
           )';
         $result = $this->mysqli->query($query) or die($this->mysqli->error);
+        $thermostat_id = $this->mysqli->insert_id;
       }
       else {
         // If this thermostat already exists, update it.
@@ -304,9 +305,10 @@ class sqlbee {
           where
             identifier = "' . $thermostat['identifier'] . '"';
         $result = $this->mysqli->query($query) or die($this->mysqli->error);
+        $thermostat_id = $original_thermostat['thermostat_id'];
       }
       $diff = array_diff($thermostat, $original_thermostat);
-      $return[$original_thermostat['thermostat_id']] = array_intersect_key($diff, array_flip(array('thermostat_revision', 'alert_revision', 'runtime_revision', 'internal_revision')));
+      $return[$thermostat_id] = array_intersect_key($diff, array_flip(array('thermostat_revision', 'alert_revision', 'runtime_revision', 'internal_revision')));
     }
 
     // Return the most recent values for any revision columns that have changed.
