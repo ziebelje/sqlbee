@@ -233,8 +233,7 @@ class sqlbee {
         'body' => json_encode(array(
           'selection' => array(
             'selectionType' => 'registered',
-            'selectionMatch' => '',
-            'includeEquipmentStatus' => true
+            'selectionMatch' => ''
           )
         ))
       )
@@ -308,27 +307,6 @@ class sqlbee {
       }
       $diff = array_diff($thermostat, $original_thermostat);
       $return[$original_thermostat['thermostat_id']] = array_intersect_key($diff, array_flip(array('thermostat_revision', 'alert_revision', 'runtime_revision', 'internal_revision')));
-    }
-
-    // Add in the status data.
-    foreach($response['statusList'] as $equipment_status) {
-      // Mutate the return data a bit.
-      $equipment_status = explode(':', $equipment_status);
-      $identifier = array_shift($equipment_status);
-      if($equipment_status[0] === '') {
-        $equipment_status = array();
-      }
-      else {
-        $equipment_status = explode(',', $equipment_status[0]);
-      }
-      $query = '
-        update
-          thermostat
-        set
-          json_equipment_status = "' . $this->mysqli->real_escape_string(json_encode($equipment_status)) . '"
-        where
-          identifier = "' . $this->mysqli->real_escape_string($identifier) . '"';
-      $this->mysqli->query($query) or die($this->mysqli->error);
     }
 
     // Return the most recent values for any revision columns that have changed.
