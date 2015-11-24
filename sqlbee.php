@@ -215,56 +215,6 @@ class sqlbee {
     return $response;
   }
 
-
-  /**
-   * Given a list of thermostats, get and update the runtime data in the
-   * thermostat table.
-   *
-   * @param array $thermostat_identifiers
-   *
-   * @see https://www.ecobee.com/home/developer/api/documentation/v1/operations/get-thermostats.shtml
-   * @see https://www.ecobee.com/home/developer/api/documentation/v1/objects/Selection.shtml
-   */
-  public function get_thermostats($thermostat_identifiers) {
-    if(count($thermostat_identifiers) > 25) {
-      throw new \Exception('No more than 25 identifiers allowed. See https://www.ecobee.com/home/developer/api/documentation/v1/objects/Selection.shtml');
-    }
-    else {
-      $response = $this->ecobee(
-        'GET',
-        'thermostat',
-        array(
-          'body' => json_encode(array(
-            'selection' => array(
-              'selectionType' => 'thermostats',
-              'selectionMatch' => implode(',', $thermostat_identifiers),
-              'includeRuntime' => true
-            )
-          ))
-        )
-      );
-
-      // Update each thermostat with the actual and desired values.
-      foreach($response['thermostatList'] as $thermostat) {
-        $query = '
-          update
-            thermostat
-          set
-            actual_temperature = "' . $this->mysqli->real_escape_string($thermostat['runtime']['actualTemperature'] / 10) . '",
-            actual_humidity = "' . $this->mysqli->real_escape_string($thermostat['runtime']['actualHumidity']) . '",
-            desired_heat = "' . $this->mysqli->real_escape_string($thermostat['runtime']['desiredHeat'] / 10) . '",
-            desired_cool = "' . $this->mysqli->real_escape_string($thermostat['runtime']['desiredCool'] / 10) . '",
-            desired_humidity = "' . $this->mysqli->real_escape_string($thermostat['runtime']['desiredHumidity']) . '",
-            desired_dehumidity = "' . $this->mysqli->real_escape_string($thermostat['runtime']['desiredDehumidity']) . '",
-            desired_fan_mode = "' . $this->mysqli->real_escape_string($thermostat['runtime']['desiredFanMode']) . '"
-          where
-            identifier = "' . $thermostat['identifier'] . '"
-        ';
-        $this->mysqli->query($query) or die($this->mysqli->error);
-      }
-    }
-  }
-
   /**
    * This is the main polling function and can be called fairly frequently.
    * This will get a list of all thermostats and their revisions, then return
@@ -290,11 +240,11 @@ class sqlbee {
       )
     );
 
+    $return = array();
+
     // Mark all thermostats as deleted
     $query = 'update thermostat set deleted = 1';
     $this->mysqli->query($query) or die($this->mysqli->error);
-
-    $return = array();
 
     // Update revisions and a few other columns. Also create/delete new/old
     // thermostats on the fly.
@@ -319,7 +269,6 @@ class sqlbee {
       // If this thermostat does not already exist, create it.
       if($result->num_rows === 0) {
         $original_thermostat = array();
-
         $query = '
           insert into thermostat(
             identifier,
@@ -344,7 +293,6 @@ class sqlbee {
       else {
         // If this thermostat already exists, update it.
         $original_thermostat = $result->fetch_assoc();
-
         $query = '
           update thermostat set
             name = "' . $this->mysqli->real_escape_string($thermostat['name']) . '",
@@ -358,9 +306,8 @@ class sqlbee {
             identifier = "' . $thermostat['identifier'] . '"';
         $result = $this->mysqli->query($query) or die($this->mysqli->error);
       }
-
       $diff = array_diff($thermostat, $original_thermostat);
-      $return[$original_thermostat['identifier']] = array_intersect_key($diff, array_flip(array('thermostat_revision', 'alert_revision', 'runtime_revision', 'internal_revision')));
+      $return[$original_thermostat['thermostat_id']] = array_intersect_key($diff, array_flip(array('thermostat_revision', 'alert_revision', 'runtime_revision', 'internal_revision')));
     }
 
     // Add in the status data.
@@ -368,14 +315,12 @@ class sqlbee {
       // Mutate the return data a bit.
       $equipment_status = explode(':', $equipment_status);
       $identifier = array_shift($equipment_status);
-
       if($equipment_status[0] === '') {
         $equipment_status = array();
       }
       else {
         $equipment_status = explode(',', $equipment_status[0]);
       }
-
       $query = '
         update
           thermostat
@@ -391,4 +336,190 @@ class sqlbee {
     return $return;
   }
 
+  /**
+   * Given a list of thermostats, get and update the runtime data in the
+   * thermostat table.
+   *
+   * @see https://www.ecobee.com/home/developer/api/documentation/v1/operations/get-thermostats.shtml
+   * @see https://www.ecobee.com/home/developer/api/documentation/v1/objects/Selection.shtml
+   */
+  public function get_thermostats() {
+    $response = $this->ecobee(
+      'GET',
+      'thermostat',
+      array(
+        'body' => json_encode(array(
+          'selection' => array(
+            'selectionType' => 'registered',
+            'selectionMatch' => '',
+            'includeRuntime' => true,
+            'includeExtendedRuntime' => true,
+            'includeElectricity' => true,
+            'includeSettings' => true,
+            'includeLocation' => true,
+            'includeProgram' => true,
+            'includeEvents' => true,
+            'includeDevice' => true,
+            'includeTechnician' => true,
+            'includeUtility' => true,
+            'includeManagement' => true,
+            'includeAlerts' => true,
+            'includeWeather' => true,
+            'includeHouseDetails' => true,
+            'includeOemCfg' => true,
+            'includeEquipmentStatus' => true,
+            'includeNotificationSettings' => true,
+            'includeVersion' => true,
+            'includeSensors' => true
+          )
+        ))
+      )
+    );
+
+    // Update each thermostat with the actual and desired values.
+    foreach($response['thermostatList'] as $thermostat) {
+      $runtime = json_encode($thermostat['runtime']);
+      $weather = json_encode($thermostat['weather']);
+      $equipment_status = trim($thermostat['equipmentStatus']) !== '' ? json_encode(explode(',', $thermostat['equipmentStatus'])) : json_encode(array());
+      $program = json_encode($thermostat['program']);
+      $settings = json_encode($thermostat['settings']);
+
+      $query = '
+        update
+          thermostat
+        set
+          json_runtime = "' . $this->mysqli->real_escape_string(json_encode($thermostat['runtime'])) . '",
+          json_extended_runtime = "' . $this->mysqli->real_escape_string(json_encode($thermostat['extendedRuntime'])) . '",
+          json_electricity = "' . $this->mysqli->real_escape_string(json_encode($thermostat['electricity'])) . '",
+          json_settings = "' . $this->mysqli->real_escape_string(json_encode($thermostat['settings'])) . '",
+          json_location = "' . $this->mysqli->real_escape_string(json_encode($thermostat['location'])) . '",
+          json_program = "' . $this->mysqli->real_escape_string(json_encode($thermostat['program'])) . '",
+          json_events = "' . $this->mysqli->real_escape_string(json_encode($thermostat['events'])) . '",
+          json_device = "' . $this->mysqli->real_escape_string(json_encode($thermostat['devices'])) . '",
+          json_technician = "' . $this->mysqli->real_escape_string(json_encode($thermostat['technician'])) . '",
+          json_utility = "' . $this->mysqli->real_escape_string(json_encode($thermostat['utility'])) . '",
+          json_management = "' . $this->mysqli->real_escape_string(json_encode($thermostat['management'])) . '",
+          json_alerts = "' . $this->mysqli->real_escape_string(json_encode($thermostat['alerts'])) . '",
+          json_weather = "' . $this->mysqli->real_escape_string(json_encode($thermostat['weather'])) . '",
+          json_house_details = "' . $this->mysqli->real_escape_string(json_encode($thermostat['houseDetails'])) . '",
+          json_oem_cfg = "' . $this->mysqli->real_escape_string(json_encode($thermostat['oemCfg'])) . '",
+          json_equipment_status = "' . $this->mysqli->real_escape_string(trim($thermostat['equipmentStatus']) !== '' ? json_encode(explode(',', $thermostat['equipmentStatus'])) : json_encode(array())) . '",
+          json_notification_settings = "' . $this->mysqli->real_escape_string(json_encode($thermostat['notificationSettings'])) . '",
+          json_version = "' . $this->mysqli->real_escape_string(json_encode($thermostat['version'])) . '",
+          json_remote_sensors = "' . $this->mysqli->real_escape_string(json_encode($thermostat['remoteSensors'])) . '"
+        where
+          identifier = "' . $thermostat['identifier'] . '"
+      ';
+      $this->mysqli->query($query) or die($this->mysqli->error);
+    }
+  }
+
+  /**
+   * Get the runtime report data for a specified thermostat. Updates the
+   * runtime_report table.
+   *
+   * @param int $thermostat_id
+   */
+  public function get_runtime_report($thermostat_id) {
+    $columns = array(
+      'auxHeat1' => 'auxiliary_heat_1',
+      'auxHeat2' => 'auxiliary_heat_2',
+      'auxHeat3' => 'auxiliary_heat_3',
+      'compCool1' => 'compressor_cool_1',
+      'compCool2' => 'compressor_cool_2',
+      'compHeat1' => 'compressor_heat_1',
+      'compHeat2' => 'compressor_heat_2',
+      'dehumidifier' => 'dehumidifier',
+      'dmOffset' => 'demand_management_offset',
+      'economizer' => 'economizer',
+      'fan' => 'fan',
+      'humidifier' => 'humidifier',
+      'outdoorHumidity' => 'outdoor_humidity',
+      'outdoorTemp' => 'outdoor_temperature',
+      'sky' => 'sky',
+      'ventilator' => 'ventilator',
+      'wind' => 'wind',
+      'zoneAveTemp' => 'zone_average_temperature',
+      'zoneCalendarEvent' => 'zone_calendar_event',
+      'zoneCoolTemp' => 'zone_cool_temperature',
+      'zoneHeatTemp' => 'zone_heat_temperature',
+      'zoneHumidity' => 'zone_humidity',
+      'zoneHumidityHigh' => 'zone_humidity_high',
+      'zoneHumidityLow' => 'zone_humidity_low',
+      'zoneHvacMode' => 'zone_hvac_mode',
+      'zoneOccupancy' => 'zone_occupancy',
+    );
+
+    $query = 'select * from thermostat where thermostat_id = "' . $this->mysqli->real_escape_string($thermostat_id) . '"';
+    $result = $this->mysqli->query($query) or die($this->mysqli->error);
+    if($result->num_rows === 0) {
+      throw new \Exception('Invalid thermostat_id');
+    }
+    $thermostat = $result->fetch_assoc();
+    // Get the start time. That is always going to be the most recent row minus
+    // an hour or two. This because ecobee updates the runtimeReport data every
+    // 5 minutes for weather and then every 15 minutes for other data. Past
+    // that, the data seems to lag an hour behind sometimes. This just helps
+    // ensure we have everything.
+    $query = 'select * from runtime_report order by runtime_report_id desc limit 1';
+    $result = $this->mysqli->query($query) or die($this->mysqli->error);
+    if($result->num_rows === 0) {
+      $start_gmt = time() - date('Z') - (3600 * 2);
+    }
+    else {
+      $row = $result->fetch_assoc();
+      $start_gmt = strtotime($row['timestamp']) - date('Z') - (3600 * 2);
+    }
+
+    $start_date = date('Y-m-d', $start_gmt);
+    $start_interval = date('H', $start_gmt) * 12 + round(date('i', $start_gmt) / 5);
+
+    // End time
+    $end_gmt = time() - date('Z');
+    $end_date = date('Y-m-d', $end_gmt);
+    $end_interval = date('H', $end_gmt) * 12 + round(date('i', $end_gmt) / 5);
+
+    $response = $this->ecobee(
+      'GET',
+      'runtimeReport',
+      array(
+        'body' => json_encode(array(
+          'selection' => array(
+            'selectionType' => 'thermostats',
+            'selectionMatch' => $thermostat['identifier'] // This is required by this API call
+          ),
+          'startDate' => $start_date,
+          'startInterval' => $start_interval,
+          'endDate' => $end_date,
+          'endInterval' => $end_interval,
+          'columns' => implode(',', array_keys($columns))
+        ))
+      )
+    );
+
+    $inserts = array();
+    $on_duplicate_keys = array();
+    foreach($response['reportList'][0]['rowList'] as $row) {
+      $row = substr($row, 0, -1); // Strip the trailing comma from the array.
+      $row = explode(',', $row);
+      $row = array_map('trim', $row);
+      $row = array_map(array($this->mysqli, 'real_escape_string'), $row);
+
+      // Date and time are first two columns
+      list($date, $time) = array_splice($row, 0, 2);
+      $thermostat_id = 1;
+      array_unshift($row, $thermostat_id, date('Y-m-d H:i:s', strtotime($date . ' ' . $time)));
+
+      $insert = '("' . implode('","', $row) . '")';
+      $insert = str_replace('""', 'null', $insert);
+      $inserts[] = $insert;
+    }
+
+    foreach(array_merge(array('thermostat_id' => 'thermostat_id', 'timestamp' => 'timestamp'), $columns) as $column) {
+      $on_duplicate_keys[] = '`' . $column . '` = values(`' . $column . '`)';
+    }
+
+    $query = 'insert into runtime_report(`' . implode('`,`', array_merge(array('thermostat_id', 'timestamp'), array_values($columns))) . '`) values' . implode(',', $inserts) . ' on duplicate key update ' . implode(',', $on_duplicate_keys);
+    $this->mysqli->query($query) or die($this->mysqli->error);
+  }
 }

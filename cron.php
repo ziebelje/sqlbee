@@ -5,7 +5,6 @@
 //
 // Suggested crontab entry:
 // * * * * * php -f /var/www/sqlbee/cron.php
-
 require_once 'sqlbee.php';
 $sqlbee = new sqlbee\sqlbee();
 
@@ -13,10 +12,12 @@ $sqlbee = new sqlbee\sqlbee();
 // additional API calls are necessary.
 $response = $sqlbee->get_thermostat_summary();
 
+// Run this one regardless since it's not clear what revisions are used for all
+// of this data.
+$sqlbee->get_thermostats();
+
 foreach($response as $thermostat_id => $changed_revisions) {
-  // If runtime data changed (setpoints, temperature readings, etc), get the
-  // updated data.
   if(array_key_exists('runtime_revision', $changed_revisions) === true) {
-    $sqlbee->get_thermostats(array_keys($response));
+    $sqlbee->get_runtime_report($thermostat_id);
   }
 }

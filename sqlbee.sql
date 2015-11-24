@@ -12,7 +12,7 @@ create table `api_log` (
   `timestamp` timestamp not null default current_timestamp,
   `deleted` tinyint(1) not null default '0',
   primary key (`api_log_id`)
-) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
+) engine=innodb default charset=utf8 collate=utf8_unicode_ci
 
 create table `thermostat` (
   `thermostat_id` int(10) unsigned not null auto_increment,
@@ -23,18 +23,65 @@ create table `thermostat` (
   `alert_revision` varchar(255) collate utf8_unicode_ci not null,
   `runtime_revision` varchar(255) collate utf8_unicode_ci not null,
   `internal_revision` varchar(255) collate utf8_unicode_ci not null,
+  `json_runtime` text collate utf8_unicode_ci,
+  `json_extended_runtime` text collate utf8_unicode_ci,
+  `json_electricity` text collate utf8_unicode_ci,
+  `json_settings` text collate utf8_unicode_ci,
+  `json_location` text collate utf8_unicode_ci,
+  `json_program` text collate utf8_unicode_ci,
+  `json_events` text collate utf8_unicode_ci,
+  `json_device` text collate utf8_unicode_ci,
+  `json_technician` text collate utf8_unicode_ci,
+  `json_utility` text collate utf8_unicode_ci,
+  `json_management` text collate utf8_unicode_ci,
+  `json_alerts` text collate utf8_unicode_ci,
+  `json_weather` text collate utf8_unicode_ci,
+  `json_house_details` text collate utf8_unicode_ci,
+  `json_oem_cfg` text collate utf8_unicode_ci,
   `json_equipment_status` text collate utf8_unicode_ci,
-  `actual_temperature` decimal(3,1) default null,
-  `actual_humidity` int(10) unsigned default null,
-  `desired_heat` decimal(3,1) default null,
-  `desired_cool` decimal(3,1) default null,
-  `desired_humidity` int(10) unsigned default null,
-  `desired_dehumidity` int(10) unsigned default null,
-  `desired_fan_mode` varchar(255) collate utf8_unicode_ci default null,
+  `json_notification_settings` text collate utf8_unicode_ci,
+  `json_version` text collate utf8_unicode_ci,
+  `json_remote_sensors` text collate utf8_unicode_ci,
   `deleted` tinyint(1) not null default '0',
   primary key (`thermostat_id`),
   unique key `identifier` (`identifier`)
-) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
+) engine=innodb default charset=utf8 collate=utf8_unicode_ci
+
+create table `runtime_report` (
+  `runtime_report_id` int(10) unsigned not null auto_increment,
+  `thermostat_id` int(10) unsigned not null,
+  `timestamp` timestamp not null default current_timestamp on update current_timestamp,
+  `auxiliary_heat_1` int(10) unsigned default null,
+  `auxiliary_heat_2` int(10) unsigned default null,
+  `auxiliary_heat_3` int(10) unsigned default null,
+  `compressor_cool_1` int(10) unsigned default null,
+  `compressor_cool_2` int(10) unsigned default null,
+  `compressor_heat_1` int(10) unsigned default null,
+  `compressor_heat_2` int(10) unsigned default null,
+  `dehumidifier` int(10) unsigned default null,
+  `demand_management_offset` decimal(3,1) unsigned default null,
+  `economizer` int(10) unsigned default null,
+  `fan` int(10) unsigned default null,
+  `humidifier` int(10) unsigned default null,
+  `outdoor_humidity` int(10) unsigned default null,
+  `outdoor_temperature` decimal(3,1) unsigned default null,
+  `sky` int(10) unsigned default null,
+  `ventilator` int(10) unsigned default null,
+  `wind` int(10) unsigned default null,
+  `zone_average_temperature` decimal(3,1) unsigned default null,
+  `zone_calendar_event` varchar(255) collate utf8_unicode_ci default null,
+  `zone_cool_temperature` decimal(3,1) unsigned default null,
+  `zone_heat_temperature` decimal(3,1) unsigned default null,
+  `zone_humidity` int(10) unsigned default null,
+  `zone_humidity_high` int(10) unsigned default null,
+  `zone_humidity_low` int(10) unsigned default null,
+  `zone_hvac_mode` varchar(255) collate utf8_unicode_ci default null,
+  `zone_occupancy` int(10) unsigned default null,
+  `deleted` tinyint(1) not null default '0',
+  primary key (`runtime_report_id`),
+  unique key `thermostat_id_timestamp` (`thermostat_id`,`timestamp`),
+  constraint `runtime_report_ibfk_1` foreign key (`thermostat_id`) references `thermostat` (`thermostat_id`)
+) engine=innodb default charset=utf8 collate=utf8_unicode_ci
 
 create table `token` (
   `token_id` int(10) unsigned not null auto_increment,

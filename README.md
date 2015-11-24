@@ -7,14 +7,13 @@ _This project uses the MIT License, which means you can do whatever you want wit
 
 ### What does it do?
 - Extracts current thermostat data like temperature, humidity, setpoints, etc (supports multiple thermostats)
-- [TODO] Extracts runtime report data using the ecobee runtimeReport API endpoint
+- Extracts runtime report data using the ecobee runtimeReport API endpoint
 - [TODO] Provides a basic means of connecting up custom endpoints to meaningful events like temperature or setpoint changes
+- [TODO] Provides a simple means of running common thermostat operations like setting the temperature
 
 ### What does it NOT do?
-- Does **NOT** change thermostat temperatures or settings
 - Does **NOT** offer a means of reading the extracted data
 - Does **NOT** analyze or display the data
-- Does **NOT** make any changes to your ecobee; sqlbee is read only
 
 ## Requirements
 - An ecobee thermostat
