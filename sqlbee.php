@@ -487,7 +487,6 @@ class sqlbee {
 
       // Date and time are first two columns
       list($date, $time) = array_splice($row, 0, 2);
-      $thermostat_id = 1;
       array_unshift($row, $thermostat_id, date('Y-m-d H:i:s', strtotime($date . ' ' . $time)));
 
       $insert = '("' . implode('","', $row) . '")';
