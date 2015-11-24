@@ -12,7 +12,7 @@ create table `api_log` (
   `timestamp` timestamp not null default current_timestamp,
   `deleted` tinyint(1) not null default '0',
   primary key (`api_log_id`)
-) engine=innodb default charset=utf8 collate=utf8_unicode_ci
+) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
 
 create table `thermostat` (
   `thermostat_id` int(10) unsigned not null auto_increment,
@@ -45,7 +45,7 @@ create table `thermostat` (
   `deleted` tinyint(1) not null default '0',
   primary key (`thermostat_id`),
   unique key `identifier` (`identifier`)
-) engine=innodb default charset=utf8 collate=utf8_unicode_ci
+) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
 
 create table `runtime_report` (
   `runtime_report_id` int(10) unsigned not null auto_increment,
@@ -81,7 +81,7 @@ create table `runtime_report` (
   primary key (`runtime_report_id`),
   unique key `thermostat_id_timestamp` (`thermostat_id`,`timestamp`),
   constraint `runtime_report_ibfk_1` foreign key (`thermostat_id`) references `thermostat` (`thermostat_id`)
-) engine=innodb default charset=utf8 collate=utf8_unicode_ci
+) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
 
 create table `token` (
   `token_id` int(10) unsigned not null auto_increment,
