@@ -329,7 +329,7 @@ class sqlbee {
    * @see https://www.ecobee.com/home/developer/api/documentation/v1/operations/get-thermostats.shtml
    * @see https://www.ecobee.com/home/developer/api/documentation/v1/objects/Selection.shtml
    */
-  public function get_thermostats() {
+  public function sync_thermostats() {
     $response = $this->ecobee(
       'GET',
       'thermostat',
@@ -406,7 +406,7 @@ class sqlbee {
    *
    * @param int $thermostat_id
    */
-  public function get_runtime_report($thermostat_id) {
+  public function sync_runtime_report($thermostat_id) {
     $columns = array(
       'auxHeat1' => 'auxiliary_heat_1',
       'auxHeat2' => 'auxiliary_heat_2',

@@ -14,10 +14,10 @@ $response = $sqlbee->get_thermostat_summary();
 
 // Run this one regardless since it's not clear what revisions are used for all
 // of this data.
-$sqlbee->get_thermostats();
+$sqlbee->sync_thermostats();
 
 foreach($response as $thermostat_id => $changed_revisions) {
   if(array_key_exists('runtime_revision', $changed_revisions) === true) {
-    $sqlbee->get_runtime_report($thermostat_id);
+    $sqlbee->sync_runtime_report($thermostat_id);
   }
 }
