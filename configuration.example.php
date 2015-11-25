@@ -17,4 +17,7 @@ abstract class configuration {
   // debugging or for learning about what API calls are being made, but isn't
   // otherwise very useful.
   public static $log_api_calls = false;
+
+  // For any debug output.
+  public static $debug = false;
 }

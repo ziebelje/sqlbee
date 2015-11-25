@@ -82,6 +82,12 @@ class sqlbee {
 
     $curl_response = curl_exec($curl_handle);
 
+    if(configuration::$debug === true) {
+      echo json_encode($arguments);
+      echo PHP_EOL . '-----------------' . PHP_EOL;
+      echo join('', array_map('trim', explode("\n", $curl_response)));
+    }
+
     // Log this request and response
     if(configuration::$log_api_calls === true) {
       $query = '
