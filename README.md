@@ -8,8 +8,8 @@ _This project uses the MIT License, which means you can do whatever you want wit
 ### What does it do?
 - Extracts current thermostat data like temperature, humidity, setpoints, etc (supports multiple thermostats)
 - Extracts runtime report data using the ecobee runtimeReport API endpoint
+- Provides a simple means of running common thermostat operations like setting the temperature and resuming the schedule (more functions to come)
 - [TODO] Provides a basic means of connecting up custom endpoints to meaningful events like temperature or setpoint changes
-- [TODO] Provides a simple means of running common thermostat operations like setting the temperature
 
 ### What does it NOT do?
 - Does **NOT** offer a means of reading the extracted data
