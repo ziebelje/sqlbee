@@ -59,7 +59,6 @@ class sqlbee {
       $result = $this->mysqli->query($query) or die($this->mysqli->error);
       $token = $result->fetch_assoc();
       curl_setopt($curl_handle, CURLOPT_HTTPHEADER , array(
-        'Content-type: application/json',
         'Authorization: Bearer ' . $token['access_token']
       ));
     }
@@ -83,6 +82,7 @@ class sqlbee {
     $curl_response = curl_exec($curl_handle);
 
     if(configuration::$debug === true) {
+      // TODO: Look for response and if invalid throw exception
       echo json_encode($arguments);
       echo PHP_EOL . '-----------------' . PHP_EOL;
       echo join('', array_map('trim', explode("\n", $curl_response)));
@@ -144,7 +144,7 @@ class sqlbee {
       'authorize',
       array(
         'response_type' => 'ecobeePin',
-        'scope' => 'smartRead'
+        'scope' => configuration::$scope
       )
     );
   }
@@ -436,12 +436,8 @@ class sqlbee {
       'zoneOccupancy' => 'zone_occupancy',
     );
 
-    $query = 'select * from thermostat where thermostat_id = "' . $this->mysqli->real_escape_string($thermostat_id) . '"';
-    $result = $this->mysqli->query($query) or die($this->mysqli->error);
-    if($result->num_rows === 0) {
-      throw new \Exception('Invalid thermostat_id');
-    }
-    $thermostat = $result->fetch_assoc();
+    $thermostat = $this->get_thermostat($thermostat_id);
+
     // Get the start time. That is always going to be the most recent row minus
     // an hour or two. This because ecobee updates the runtimeReport data every
     // 5 minutes for weather and then every 15 minutes for other data. Past
@@ -506,5 +502,132 @@ class sqlbee {
 
     $query = 'insert into runtime_report(`' . implode('`,`', array_merge(array('thermostat_id', 'timestamp'), array_values($columns))) . '`) values' . implode(',', $inserts) . ' on duplicate key update ' . implode(',', $on_duplicate_keys);
     $this->mysqli->query($query) or die($this->mysqli->error);
+  }
+
+  /**
+   * Set just the cool temperature, leaving the cool where it currently is.
+   *
+   * @param int $thermostat_id
+   * @param float $heat_temperature
+   */
+  public function set_cool_temperature($thermostat_id, $cool_temperature) {
+    $this->set_temperatures($thermostat_id, $cool_temperature, null);
+  }
+
+  /**
+   * Set just the heat temperature, leaving the cool where it currently is.
+   *
+   * @param int $thermostat_id
+   * @param float $heat_temperature
+   */
+  public function set_heat_temperature($thermostat_id, $heat_temperature) {
+    $this->set_temperatures($thermostat_id, null, $heat_temperature);
+  }
+
+  /**
+   * Set the heat/cool temperatures. Setting just one will leave the other one
+   * what it's currently set to. Setting both will change them both. Setting
+   * neither will hold at the current temperatures and disable any active
+   * schedule.
+   *
+   * @param int $thermostat_id
+   * @param float $cool_temperature
+   * @param float $heat_temperature
+   */
+  public function set_temperatures($thermostat_id, $cool_temperature = null, $heat_temperature = null) {
+    $thermostat = $this->get_thermostat($thermostat_id);
+
+    // If cool or heat are unspecified, set them to be whatever they currently
+    // happen to be.
+    if($cool_temperature === null) {
+      $cool_temperature = $thermostat['json_runtime']['desiredCool'] / 10;
+    }
+    if($heat_temperature === null) {
+      $heat_temperature = $thermostat['json_runtime']['desiredHeat'] / 10;
+    }
+
+    // Format the way ecobee wants them.
+    $cool_temperature = round($cool_temperature, 1) * 10;
+    $heat_temperature = round($heat_temperature, 1) * 10;
+
+    $this->ecobee(
+      'POST',
+      'thermostat',
+      array(
+        'format' => 'json',
+        'body' => json_encode(array(
+          'selection' => array(
+            'selectionType' => 'registered',
+            'selectionMatch' => $thermostat['identifier']
+          ),
+          'functions' => array(
+            array(
+              'type' => 'setHold',
+              'params' => array(
+                'holdType' => 'indefinite',
+                'coolHoldTemp' => $cool_temperature,
+                'heatHoldTemp' => $heat_temperature
+              )
+            )
+          )
+        ))
+      )
+    );
+
+    // After any change, sync the thermostat data again. Otherwise the database
+    // will still reflect the old temperature.
+    $this->sync_thermostats();
+
+  }
+
+  public function resume_schedule($thermostat_id) {
+    $thermostat = $this->get_thermostat($thermostat_id);
+
+    $this->ecobee(
+      'POST',
+      'thermostat',
+      array(
+        'format' => 'json',
+        'body' => json_encode(array(
+          'selection' => array(
+            'selectionType' => 'registered',
+            'selectionMatch' => $thermostat['identifier']
+          ),
+          'functions' => array(
+            array(
+              'type' => 'resumeProgram',
+            )
+          )
+        ))
+      )
+    );
+
+    // After any change, sync the thermostat data again. Otherwise the database
+    // will still reflect the old temperature.
+    $this->sync_thermostats();
+  }
+
+  /**
+   * Get a thermostat from a thermostat_id.
+   *
+   * @param int $thermostat_id
+   *
+   * @return array The thermostat.
+   */
+  private function get_thermostat($thermostat_id) {
+    $query = 'select * from thermostat where thermostat_id = "' . $this->mysqli->real_escape_string($thermostat_id) . '"';
+    $result = $this->mysqli->query($query) or die($this->mysqli->error);
+    if($result->num_rows === 0) {
+      throw new \Exception('Invalid thermostat_id');
+    }
+    else {
+      $thermostat = $result->fetch_assoc();
+      foreach($thermostat as $key => &$value) {
+        if(substr($key, 0, 5) === 'json_') {
+          $value = json_decode($value, true);
+        }
+      }
+      return $thermostat;
+    }
   }
 }
