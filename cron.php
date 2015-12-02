@@ -6,7 +6,7 @@
 // Suggested crontab entry:
 // * * * * * php -f /var/www/sqlbee/cron.php
 require_once 'sqlbee.php';
-$sqlbee = new sqlbee\sqlbee();
+$sqlbee = new sqlbee();
 
 // Poll for the thermostat summary. The response of this determines if
 // additional API calls are necessary.
