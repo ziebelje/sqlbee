@@ -49,7 +49,7 @@ create table `sqlbee_thermostat` (
 
 create table `sqlbee_runtime_report` (
   `sqlbee_runtime_report_id` int(10) unsigned not null auto_increment,
-  `sqlbee_sqlbee_thermostat_id` int(10) unsigned not null,
+  `sqlbee_thermostat_id` int(10) unsigned not null,
   `timestamp` timestamp not null default current_timestamp on update current_timestamp,
   `auxiliary_heat_1` int(10) unsigned default null,
   `auxiliary_heat_2` int(10) unsigned default null,
@@ -80,7 +80,7 @@ create table `sqlbee_runtime_report` (
   `deleted` tinyint(1) not null default '0',
   primary key (`sqlbee_runtime_report_id`),
   unique key `sqlbee_thermostat_id_timestamp` (`sqlbee_thermostat_id`,`timestamp`),
-  constraint `runtime_report_ibfk_1` foreign key (`sqlbee_thermostat_id`) references `sqlbee_thermostat` (`sqlbee_thermostat_id`)
+  constraint `sqlbee_runtime_report_ibfk_1` foreign key (`sqlbee_thermostat_id`) references `sqlbee_thermostat` (`sqlbee_thermostat_id`)
 ) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
 
 create table `sqlbee_token` (
