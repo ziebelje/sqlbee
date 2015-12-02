@@ -55,7 +55,7 @@ class sqlbee {
       $endpoint = '/1/' . $endpoint;
 
       // For non-authorization endpoints, add the access_token header.
-      $query = 'select * from token order by token_id desc limit 1';
+      $query = 'select * from sqlbee_token order by sqlbee_token_id desc limit 1';
       $result = $this->mysqli->query($query) or die($this->mysqli->error);
       $token = $result->fetch_assoc();
       curl_setopt($curl_handle, CURLOPT_HTTPHEADER , array(
@@ -91,7 +91,7 @@ class sqlbee {
     // Log this request and response
     if(configuration::$log_api_calls === true) {
       $query = '
-        insert into api_log(
+        insert into sqlbee_api_log(
           `method`,
           `endpoint`,
           `json_arguments`,
@@ -179,7 +179,7 @@ class sqlbee {
     $access_token_escaped = $this->mysqli->real_escape_string($response['access_token']);
     $refresh_token_escaped = $this->mysqli->real_escape_string($response['refresh_token']);
     $query = '
-      insert into token(
+      insert into sqlbee_token(
         `access_token`,
         `refresh_token`
       ) values(
@@ -215,7 +215,7 @@ class sqlbee {
 
     $access_token_escaped = $this->mysqli->real_escape_string($response['access_token']);
     $refresh_token_escaped = $this->mysqli->real_escape_string($response['refresh_token']);
-    $query = 'insert into token(`access_token`, `refresh_token`) values("' . $access_token_escaped . '", "' . $refresh_token_escaped . '")';
+    $query = 'insert into sqlbee_token(`access_token`, `refresh_token`) values("' . $access_token_escaped . '", "' . $refresh_token_escaped . '")';
     $this->mysqli->query($query) or die($this->mysqli->error);
 
     return $response;
@@ -248,7 +248,7 @@ class sqlbee {
     $return = array();
 
     // Mark all thermostats as deleted
-    $query = 'update thermostat set deleted = 1';
+    $query = 'update sqlbee_thermostat set deleted = 1';
     $this->mysqli->query($query) or die($this->mysqli->error);
 
     // Update revisions and a few other columns. Also create/delete new/old
@@ -268,14 +268,14 @@ class sqlbee {
       );
 
       // Check to see if this thermostat already exists.
-      $query = 'select * from thermostat where identifier = "' . $this->mysqli->real_escape_string($thermostat['identifier']) . '"';
+      $query = 'select * from sqlbee_thermostat where identifier = "' . $this->mysqli->real_escape_string($thermostat['identifier']) . '"';
       $result = $this->mysqli->query($query) or die($this->mysqli->error);
 
       // If this thermostat does not already exist, create it.
       if($result->num_rows === 0) {
         $original_thermostat = array();
         $query = '
-          insert into thermostat(
+          insert into sqlbee_thermostat(
             identifier,
             name,
             connected,
@@ -294,13 +294,13 @@ class sqlbee {
             "' . $this->mysqli->real_escape_string($thermostat['internal_revision']) . '"
           )';
         $result = $this->mysqli->query($query) or die($this->mysqli->error);
-        $thermostat_id = $this->mysqli->insert_id;
+        $sqlbee_thermostat_id = $this->mysqli->insert_id;
       }
       else {
         // If this thermostat already exists, update it.
         $original_thermostat = $result->fetch_assoc();
         $query = '
-          update thermostat set
+          update sqlbee_thermostat set
             name = "' . $this->mysqli->real_escape_string($thermostat['name']) . '",
             connected = "' . $this->mysqli->real_escape_string($thermostat['connected']) . '",
             thermostat_revision = "' . $this->mysqli->real_escape_string($thermostat['thermostat_revision']) . '",
@@ -311,14 +311,15 @@ class sqlbee {
           where
             identifier = "' . $thermostat['identifier'] . '"';
         $result = $this->mysqli->query($query) or die($this->mysqli->error);
-        $thermostat_id = $original_thermostat['thermostat_id'];
+        $sqlbee_thermostat_id = $original_thermostat['sqlbee_thermostat_id'];
       }
       $diff = array_diff($thermostat, $original_thermostat);
-      $return[$thermostat_id] = array_intersect_key($diff, array_flip(array('thermostat_revision', 'alert_revision', 'runtime_revision', 'internal_revision')));
+      $return[$sqlbee_thermostat_id] = array_intersect_key($diff, array_flip(array('thermostat_revision', 'alert_revision', 'runtime_revision', 'internal_revision')));
     }
 
     // Return the most recent values for any revision columns that have changed.
-    // If it's a new thermostat, all of them will be returned. Keyed by thermostat_id.
+    // If it's a new thermostat, all of them will be returned. Keyed by
+    // sqlbee_thermostat_id.
     return $return;
   }
 
@@ -372,7 +373,7 @@ class sqlbee {
 
       $query = '
         update
-          thermostat
+          sqlbee_thermostat
         set
           json_runtime = "' . $this->mysqli->real_escape_string(json_encode($thermostat['runtime'])) . '",
           json_extended_runtime = "' . $this->mysqli->real_escape_string(json_encode($thermostat['extendedRuntime'])) . '",
@@ -404,9 +405,9 @@ class sqlbee {
    * Get the runtime report data for a specified thermostat. Updates the
    * runtime_report table.
    *
-   * @param int $thermostat_id
+   * @param int $sqlbee_thermostat_id
    */
-  public function sync_runtime_report($thermostat_id) {
+  public function sync_runtime_report($sqlbee_thermostat_id) {
     $columns = array(
       'auxHeat1' => 'auxiliary_heat_1',
       'auxHeat2' => 'auxiliary_heat_2',
@@ -436,14 +437,14 @@ class sqlbee {
       'zoneOccupancy' => 'zone_occupancy',
     );
 
-    $thermostat = $this->get_thermostat($thermostat_id);
+    $thermostat = $this->get_thermostat($sqlbee_thermostat_id);
 
     // Get the start time. That is always going to be the most recent row minus
     // an hour or two. This because ecobee updates the runtimeReport data every
     // 5 minutes for weather and then every 15 minutes for other data. Past
     // that, the data seems to lag an hour behind sometimes. This just helps
     // ensure we have everything.
-    $query = 'select * from runtime_report order by runtime_report_id desc limit 1';
+    $query = 'select * from sqlbee_runtime_report order by sqlbee_runtime_report_id desc limit 1';
     $result = $this->mysqli->query($query) or die($this->mysqli->error);
     if($result->num_rows === 0) {
       $start_gmt = time() - date('Z') - (3600 * 2);
@@ -489,30 +490,30 @@ class sqlbee {
 
       // Date and time are first two columns
       list($date, $time) = array_splice($row, 0, 2);
-      array_unshift($row, $thermostat_id, date('Y-m-d H:i:s', strtotime($date . ' ' . $time)));
+      array_unshift($row, $sqlbee_thermostat_id, date('Y-m-d H:i:s', strtotime($date . ' ' . $time)));
 
       $insert = '("' . implode('","', $row) . '")';
       $insert = str_replace('""', 'null', $insert);
       $inserts[] = $insert;
     }
 
-    foreach(array_merge(array('thermostat_id' => 'thermostat_id', 'timestamp' => 'timestamp'), $columns) as $column) {
+    foreach(array_merge(array('sqlbee_thermostat_id' => 'sqlbee_thermostat_id', 'timestamp' => 'timestamp'), $columns) as $column) {
       $on_duplicate_keys[] = '`' . $column . '` = values(`' . $column . '`)';
     }
 
-    $query = 'insert into runtime_report(`' . implode('`,`', array_merge(array('thermostat_id', 'timestamp'), array_values($columns))) . '`) values' . implode(',', $inserts) . ' on duplicate key update ' . implode(',', $on_duplicate_keys);
+    $query = 'insert into sqlbee_runtime_report(`' . implode('`,`', array_merge(array('sqlbee_thermostat_id', 'timestamp'), array_values($columns))) . '`) values' . implode(',', $inserts) . ' on duplicate key update ' . implode(',', $on_duplicate_keys);
     $this->mysqli->query($query) or die($this->mysqli->error);
   }
 
   /**
    * Set just the cool temperature, leaving the cool where it currently is.
    *
-   * @param int $thermostat_id
+   * @param int $sqlbee_thermostat_id
    * @param float $temperature
    */
   public function set_cool_temperature($arguments) {
     $this->set_temperatures(
-      $arguments['thermostat_id'],
+      $arguments['sqlbee_thermostat_id'],
       $arguments['temperature'],
       null
     );
@@ -521,13 +522,12 @@ class sqlbee {
   /**
    * Set just the heat temperature, leaving the cool where it currently is.
    *
-   * @param int $thermostat_id
+   * @param int $sqlbee_thermostat_id
    * @param float $temperature
    */
-  // public function set_heat_temperature($thermostat_id, $heat_temperature) {
   public function set_heat_temperature($arguments) {
     $this->set_temperatures(
-      $arguments['thermostat_id'],
+      $arguments['sqlbee_thermostat_id'],
       null,
       $arguments['temperature']
     );
@@ -539,12 +539,12 @@ class sqlbee {
    * neither will hold at the current temperatures and disable any active
    * schedule.
    *
-   * @param int $thermostat_id
+   * @param int $sqlbee_thermostat_id
    * @param float $cool_temperature
    * @param float $heat_temperature
    */
-  private function set_temperatures($thermostat_id, $cool_temperature = null, $heat_temperature = null) {
-    $thermostat = $this->get_thermostat($thermostat_id);
+  private function set_temperatures($sqlbee_thermostat_id, $cool_temperature = null, $heat_temperature = null) {
+    $thermostat = $this->get_thermostat($sqlbee_thermostat_id);
 
     // If cool or heat are unspecified, set them to be whatever they currently
     // happen to be.
@@ -589,8 +589,8 @@ class sqlbee {
 
   }
 
-  public function resume_schedule($thermostat_id) {
-    $thermostat = $this->get_thermostat($thermostat_id);
+  public function resume_schedule($sqlbee_thermostat_id) {
+    $thermostat = $this->get_thermostat($sqlbee_thermostat_id);
 
     $this->ecobee(
       'POST',
@@ -617,17 +617,17 @@ class sqlbee {
   }
 
   /**
-   * Get a thermostat from a thermostat_id.
+   * Get a thermostat from a sqlbee_thermostat_id.
    *
-   * @param int $thermostat_id
+   * @param int $sqlbee_thermostat_id
    *
    * @return array The thermostat.
    */
-  private function get_thermostat($thermostat_id) {
-    $query = 'select * from thermostat where thermostat_id = "' . $this->mysqli->real_escape_string($thermostat_id) . '"';
+  private function get_thermostat($sqlbee_thermostat_id) {
+    $query = 'select * from sqlbee_thermostat where sqlbee_thermostat_id = "' . $this->mysqli->real_escape_string($sqlbee_thermostat_id) . '"';
     $result = $this->mysqli->query($query) or die($this->mysqli->error);
     if($result->num_rows === 0) {
-      throw new \Exception('Invalid thermostat_id');
+      throw new \Exception('Invalid sqlbee_thermostat_id');
     }
     else {
       $thermostat = $result->fetch_assoc();
