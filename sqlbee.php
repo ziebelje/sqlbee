@@ -508,20 +508,29 @@ class sqlbee {
    * Set just the cool temperature, leaving the cool where it currently is.
    *
    * @param int $thermostat_id
-   * @param float $heat_temperature
+   * @param float $temperature
    */
-  public function set_cool_temperature($thermostat_id, $cool_temperature) {
-    $this->set_temperatures($thermostat_id, $cool_temperature, null);
+  public function set_cool_temperature($arguments) {
+    $this->set_temperatures(
+      $arguments['thermostat_id'],
+      $arguments['temperature'],
+      null
+    );
   }
 
   /**
    * Set just the heat temperature, leaving the cool where it currently is.
    *
    * @param int $thermostat_id
-   * @param float $heat_temperature
+   * @param float $temperature
    */
-  public function set_heat_temperature($thermostat_id, $heat_temperature) {
-    $this->set_temperatures($thermostat_id, null, $heat_temperature);
+  // public function set_heat_temperature($thermostat_id, $heat_temperature) {
+  public function set_heat_temperature($arguments) {
+    $this->set_temperatures(
+      $arguments['thermostat_id'],
+      null,
+      $arguments['temperature']
+    );
   }
 
   /**
@@ -534,7 +543,7 @@ class sqlbee {
    * @param float $cool_temperature
    * @param float $heat_temperature
    */
-  public function set_temperatures($thermostat_id, $cool_temperature = null, $heat_temperature = null) {
+  private function set_temperatures($thermostat_id, $cool_temperature = null, $heat_temperature = null) {
     $thermostat = $this->get_thermostat($thermostat_id);
 
     // If cool or heat are unspecified, set them to be whatever they currently
