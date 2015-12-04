@@ -589,6 +589,11 @@ class sqlbee {
 
   }
 
+  /**
+   * Resume the current thermostat schedule
+   *
+   * @param int $sqlbee_thermostat_id
+   */
   public function resume_schedule($sqlbee_thermostat_id) {
     $thermostat = $this->get_thermostat($sqlbee_thermostat_id);
 
@@ -605,6 +610,44 @@ class sqlbee {
           'functions' => array(
             array(
               'type' => 'resumeProgram',
+            )
+          )
+        ))
+      )
+    );
+
+    // After any change, sync the thermostat data again. Otherwise the database
+    // will still reflect the old temperature.
+    $this->sync_thermostats();
+  }
+
+  /**
+   * Set the current HVAC mode.
+   *
+   * @param int $sqlbee_thermostat_id
+   * @param string $hvac_mode off|auto|heat|cool|aux
+   */
+  public function set_hvac_mode($arguments) {
+    $thermostat = $this->get_thermostat($arguments['sqlbee_thermostat_id']);
+
+    // For simplicity
+    if($arguments['hvac_mode'] === 'aux') {
+      $arguments['hvac_mode'] = 'auxHeatHonly';
+    }
+
+    $this->ecobee(
+      'POST',
+      'thermostat',
+      array(
+        'format' => 'json',
+        'body' => json_encode(array(
+          'selection' => array(
+            'selectionType' => 'registered',
+            'selectionMatch' => $thermostat['identifier']
+          ),
+          'thermostat' => array(
+            'settings' => array(
+              'hvacMode' => $arguments['hvac_mode']
             )
           )
         ))
