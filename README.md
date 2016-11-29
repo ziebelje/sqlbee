@@ -29,4 +29,4 @@ _This project uses the MIT License, which means you can do whatever you want wit
 8. Set up a cron job to run `cron.php` at your desired interval. Example crontab entry: `* * * * * php -f /var/www/sqlbee/cron.php`
 
 ## Notes
-- After getting the project running, you might notice that roughly the past 15 minutes of data in sqlbee_runtime_report have missing data. This is because the API reports these rows but the ecobee only transmits it's local data every 15 minutes.
+- After getting the project running, you might notice that roughly the past 15 minutes of data in runtime_report have missing data. This is because the API reports these rows but the ecobee only transmits it's local data every 15 minutes.
