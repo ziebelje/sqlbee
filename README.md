@@ -20,13 +20,13 @@ _This project uses the MIT License, which means you can do whatever you want wit
 
 ## Getting Started
 1. Clone this project to a folder on your server.
-2. Create the sqlbee database and tables on your mySQL database by running the SQL in `sqlbee.sql`
-3. Copy or rename configuration.example.php to configuration.php
-4. Create an ecobee developer account (https://www.ecobee.com/developers/)
+2. Create the sqlbee database and tables on your mySQL database by running the SQL in `sqlbee.sql`.
+3. Copy or rename configuration.example.php to configuration.php.
+4. Create an ecobee developer account (https://www.ecobee.com/developers/).
 5. Create your own ecobee app (Developer > Create New) and get the API key and set that as the `$client_id` variable in `configuration.php`. Use the PIN Authorization method when creating the app.
-6. Set the `$database_*` variables in configuration.php to match your mySQL connection properties
-7. Execute setup.php by running `php -f setup.php` and follow the instructions
-8. Set up a cron job to run `cron.php` at your desired interval. Example crontab entry: `* * * * * php -f /var/www/sqlbee/cron.php`
+6. Set the `$database_*` variables in configuration.php to match your mySQL connection properties.
+7. Execute setup.php by running `php -f setup.php` and follow the instructions.
+8. Set up a cron job to run `cron.php` at your desired interval. Example crontab entry: `* * * * * php -f /var/www/sqlbee/cron.php`.
 
 ## Notes
 - After getting the project running, you might notice that roughly the past 15 minutes of data in runtime_report have missing data. This is because the API reports these rows but the ecobee only transmits it's local data every 15 minutes.
