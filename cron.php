@@ -1,11 +1,12 @@
 <?php
 
-// Recommend running this file on a cron job once per minute. Make sure the path
-// to cron.php matches where you put sqlbee on your machine.
-//
-// Suggested crontab entry:
-// * * * * * php -f /var/www/sqlbee/cron.php
+/**
+ * Recommend running this file on a cron job once per minute.
+ */
+
+namespace sqlbee;
 require_once 'sqlbee.php';
+
 $sqlbee = new sqlbee();
 
 // Poll for the thermostat summary. The response of this determines if
