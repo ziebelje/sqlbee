@@ -444,18 +444,29 @@ class sqlbee {
     // 5 minutes for weather and then every 15 minutes for other data. Past
     // that, the data seems to lag an hour behind sometimes. This just helps
     // ensure we have everything.
-    $query = 'select * from runtime_report order by runtime_report_id desc limit 1';
+    $thermostat_id_escaped = $this->mysqli->real_escape_string($thermostat_id);
+    $query = '
+      select
+        *
+      from
+        runtime_report
+      where
+        thermostat_id = "' . $thermostat_id_escaped . '"
+      order by
+        timestamp desc
+      limit 1
+    ';
     $result = $this->mysqli->query($query) or die($this->mysqli->error);
     if($result->num_rows === 0) {
-      $start_gmt = time() - date('Z') - (3600 * 2);
+      $begin_gmt = time() - date('Z') - (3600 * 2);
     }
     else {
       $row = $result->fetch_assoc();
-      $start_gmt = strtotime($row['timestamp']) - date('Z') - (3600 * 2);
+      $begin_gmt = strtotime($row['timestamp']) - date('Z') - (3600 * 2);
     }
 
-    $start_date = date('Y-m-d', $start_gmt);
-    $start_interval = date('H', $start_gmt) * 12 + round(date('i', $start_gmt) / 5);
+    $start_date = date('Y-m-d', $begin_gmt);
+    $start_interval = date('H', $begin_gmt) * 12 + round(date('i', $begin_gmt) / 5);
 
     // End time
     $end_gmt = time() - date('Z');
