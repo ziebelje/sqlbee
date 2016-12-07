@@ -8,7 +8,7 @@ create table `api_log` (
   `method` enum('get','post') not null,
   `endpoint` varchar(255) not null,
   `json_arguments` text not null,
-  `response` text not null,
+  `response` mediumtext not null,
   `timestamp` timestamp not null default current_timestamp,
   `deleted` tinyint(1) not null default '0',
   primary key (`api_log_id`)
