@@ -1,11 +1,11 @@
-            _ _
-           | | |
-  ___  ____| | |__   ___  ___
- / __|/ _  | |  _ \ / _ \/ _ \
- \__ \ (_| | | |_) |  __/  __/
- |___/\__  |_|____/ \___|\___|
-         | |
-         |_|
+                _ _
+               | | |
+      ___  ____| | |__   ___  ___
+     / __|/ _  | |  _ \ / _ \/ _ \
+     \__ \ (_| | | |_) |  __/  __/
+     |___/\__  |_|____/ \___|\___|
+             | |
+             |_|
 
 ## About
 sqlbee is a simple application that queries the ecobee API and extracts thermostat and runtime report data into a mySQL database. This is essentially the data from the System Monitor section of ecobee Home IQ.
