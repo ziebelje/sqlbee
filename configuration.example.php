@@ -44,4 +44,9 @@ abstract class configuration {
    * For any debug output
    */
   public static $debug = false;
+
+  /**
+   * This gets set to true during setup to help with some output.
+   */
+  public static $setup = false;
 }

@@ -402,12 +402,59 @@ class sqlbee {
   }
 
   /**
+   * Generates properly chunked time ranges and then syncs up to one week of
+   * data at a time back to either the last entry in the table or the date the
+   * thermostat was first connected.
+   *
+   * @param int $thermostat_id
+   */
+  public function sync_runtime_report($thermostat_id) {
+    $thermostat_id_escaped = $this->mysqli->real_escape_string($thermostat_id);
+    $query = '
+      select
+        *
+      from
+        runtime_report
+      where
+        thermostat_id = "' . $thermostat_id_escaped . '"
+      order by
+        timestamp desc
+      limit 1
+    ';
+    $result = $this->mysqli->query($query) or die($this->mysqli->error);
+    if($result->num_rows === 0) {
+      $thermostat = $this->get_thermostat($thermostat_id);
+      $desired_begin_gmt = strtotime($thermostat['json_runtime']['firstConnected']);
+    }
+    else {
+      $row = $result->fetch_assoc();
+      $desired_begin_gmt = strtotime($row['timestamp']) - date('Z') - (3600 * 2);
+    }
+
+    // Set $end_gmt to the current time.
+    $end_gmt = time() - date('Z');
+
+    $chunk_size = 86400 * 7; // 7 days (in seconds)
+
+    // Start $begin_gmt at $end_gmt. In the loop, $begin_gmt is always
+    // decremented by $chunk_size (no older than $desired_begin_gmt) prior to
+    // calling sync_runtime_report_. Also, $end_gmt gets initially set to
+    // $begin_gmt every loop to continually shift back both points.
+    $begin_gmt = $end_gmt;
+    do {
+      $end_gmt = $begin_gmt;
+      $begin_gmt = max($desired_begin_gmt, $begin_gmt - $chunk_size);
+      $this->sync_runtime_report_($thermostat_id, $begin_gmt, $end_gmt);
+    } while($begin_gmt > $desired_begin_gmt);
+  }
+
+  /**
    * Get the runtime report data for a specified thermostat. Updates the
    * runtime_report table.
    *
    * @param int $thermostat_id
    */
-  public function sync_runtime_report($thermostat_id) {
+  private function sync_runtime_report_($thermostat_id, $begin_gmt, $end_gmt) {
     $columns = array(
       'auxHeat1' => 'auxiliary_heat_1',
       'auxHeat2' => 'auxiliary_heat_2',
@@ -439,39 +486,21 @@ class sqlbee {
 
     $thermostat = $this->get_thermostat($thermostat_id);
 
-    // Get the start time. That is always going to be the most recent row minus
-    // an hour or two. This because ecobee updates the runtimeReport data every
-    // 5 minutes for weather and then every 15 minutes for other data. Past
-    // that, the data seems to lag an hour behind sometimes. This just helps
-    // ensure we have everything.
-    $thermostat_id_escaped = $this->mysqli->real_escape_string($thermostat_id);
-    $query = '
-      select
-        *
-      from
-        runtime_report
-      where
-        thermostat_id = "' . $thermostat_id_escaped . '"
-      order by
-        timestamp desc
-      limit 1
-    ';
-    $result = $this->mysqli->query($query) or die($this->mysqli->error);
-    if($result->num_rows === 0) {
-      $begin_gmt = time() - date('Z') - (3600 * 2);
-    }
-    else {
-      $row = $result->fetch_assoc();
-      $begin_gmt = strtotime($row['timestamp']) - date('Z') - (3600 * 2);
-    }
+    $begin_date = date('Y-m-d', $begin_gmt);
+    $begin_interval = date('H', $begin_gmt) * 12 + round(date('i', $begin_gmt) / 5);
 
-    $start_date = date('Y-m-d', $begin_gmt);
-    $start_interval = date('H', $begin_gmt) * 12 + round(date('i', $begin_gmt) / 5);
-
-    // End time
-    $end_gmt = time() - date('Z');
     $end_date = date('Y-m-d', $end_gmt);
     $end_interval = date('H', $end_gmt) * 12 + round(date('i', $end_gmt) / 5);
+
+    if(configuration::$setup === true) {
+      echo "\r";
+      $string = date('m/d/Y', $begin_gmt) . ' > ' . date('m/d/Y', $end_gmt);
+      echo ' │     ' . $string;
+      for($i = 0; $i < 33 - strlen($string); $i++) {
+        echo ' ';
+      }
+      echo '│';
+    }
 
     $response = $this->ecobee(
       'GET',
@@ -482,8 +511,8 @@ class sqlbee {
             'selectionType' => 'thermostats',
             'selectionMatch' => $thermostat['identifier'] // This is required by this API call
           ),
-          'startDate' => $start_date,
-          'startInterval' => $start_interval,
+          'startDate' => $begin_date,
+          'startInterval' => $begin_interval,
           'endDate' => $end_date,
           'endInterval' => $end_interval,
           'columns' => implode(',', array_keys($columns))

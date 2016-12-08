@@ -18,7 +18,7 @@ $response = $sqlbee->get_thermostat_summary();
 $sqlbee->sync_thermostats();
 
 foreach($response as $thermostat_id => $changed_revisions) {
-  if(array_key_exists('runtime_revision', $changed_revisions) === true) {
+  // if(array_key_exists('runtime_revision', $changed_revisions) === true) {
     $sqlbee->sync_runtime_report($thermostat_id);
-  }
+  // }
 }
