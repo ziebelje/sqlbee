@@ -515,7 +515,8 @@ class sqlbee {
           'startInterval' => $begin_interval,
           'endDate' => $end_date,
           'endInterval' => $end_interval,
-          'columns' => implode(',', array_keys($columns))
+          'columns' => implode(',', array_keys($columns)),
+          'includeSensors' => true
         ))
       )
     );
