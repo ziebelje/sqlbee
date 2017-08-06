@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * To clear the database:
+ * set foreign_key_checks = 0;
+ * truncate api_log;
+ * truncate runtime_report;
+ * truncate token;
+ * truncate thermostat;
+ * set foreign_key_checks = 1;
+ */
+
 namespace sqlbee;
 require_once 'sqlbee.php';
 
@@ -16,6 +26,7 @@ echo ' │    \__ \ (_| | | |_) |  __/  __/     │' . PHP_EOL;
 echo ' │    |___/\__  |_|____/ \___|\___|     │' . PHP_EOL;
 echo ' │            | |                       │' . PHP_EOL;
 echo ' │            |_|                       │' . PHP_EOL;
+echo ' │                                      │' . PHP_EOL;
 echo ' ├──────────────────────────────────────┤' . PHP_EOL;
 echo ' │                                      │' . PHP_EOL;
 echo ' │  1. Open ecobee.com and go to        │' . PHP_EOL;
@@ -28,21 +39,20 @@ echo ' │             │   ' . strtoupper($response['ecobeePin']) . '   │   
 echo ' │             └──────────┘             │' . PHP_EOL;
 echo ' │                                      │' . PHP_EOL;
 echo ' │      Waiting for authorization       │' . PHP_EOL;
-
-$progress_bar = '';
 echo ' │    □□□□□□□□□□□□□□□□□□□□□□□□□□□□□□    │';
 for($i = 0; $i < 35; $i++) {
-  echo chr(8);
+  echo chr(8); // Backspace
 }
 
 $authorized = false;
 
-$try_for = 60;
-$seconds_left = $try_for;
+$bar_remain = 30;
+$seconds_left = 60;
 $delay = 2;
 while(($seconds_left -= $delay) >= 0 && $authorized === false) {
   try {
     echo '■';
+    $bar_remain--;
 
     // Throws an exception if it fails
     $response = $sqlbee->grant_token($response['code']);
@@ -53,6 +63,12 @@ while(($seconds_left -= $delay) >= 0 && $authorized === false) {
 
   sleep($delay);
 }
+
+// Fill the rest of the progress bar.
+while($bar_remain-- >= 0) {
+  echo '■';
+}
+
 echo PHP_EOL;
 
 if($authorized === true) {
