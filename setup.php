@@ -46,26 +46,34 @@ for($i = 0; $i < 35; $i++) {
 
 $authorized = false;
 
-$bar_remain = 30;
-$seconds_left = 60;
-$delay = 2;
-while(($seconds_left -= $delay) >= 0 && $authorized === false) {
-  try {
-    echo '■';
-    $bar_remain--;
+$bar_width = 30;
+$bar_width_remain = $bar_width;
 
-    // Throws an exception if it fails
-    $response = $sqlbee->grant_token($response['code']);
+// Ecobee enforces a silly 30 second minimum interval...so dumb. Adding a bit
+// just to be safe.
+$ecobee_requested_delay = $response['interval'] + 2;
 
-    $authorized = true;
+$last_ecobee = time();
+while($bar_width_remain-- > 0 && $authorized === false) {
+  echo '■';
+
+  if(time() - $last_ecobee > $ecobee_requested_delay) {
+    try {
+      $response = $sqlbee->grant_token($response['code']);
+      $last_ecobee = time();
+      $authorized = true;
+    }
+    catch(\Exception $e) {
+      $last_ecobee = time();
+    }
+
   }
-  catch(\Exception $e) {}
 
-  sleep($delay);
+  sleep(5);
 }
 
 // Fill the rest of the progress bar.
-while($bar_remain-- >= 0) {
+while($bar_width_remain-- >= 0) {
   echo '■';
 }
 
