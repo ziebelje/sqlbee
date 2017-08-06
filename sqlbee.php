@@ -23,6 +23,9 @@ class sqlbee {
     }
 
     $this->mysqli->query('start transaction') or die($this->mysqli->error);
+
+    // Everything in this script is done in UTC time.
+    date_default_timezone_set('UTC');
   }
 
   /**
