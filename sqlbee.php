@@ -81,13 +81,6 @@ class sqlbee {
 
     $curl_response = curl_exec($curl_handle);
 
-    if(configuration::$debug === true) {
-      // TODO: Look for response and if invalid throw exception
-      echo json_encode($arguments);
-      echo PHP_EOL . '-----------------' . PHP_EOL;
-      echo join('', array_map('trim', explode("\n", $curl_response)));
-    }
-
     // Log this request and response
     if(configuration::$log_api_calls === true) {
       $query = '
@@ -122,8 +115,18 @@ class sqlbee {
     // auto_refresh_token to false to prevent accidental infinite refreshing if
     // something bad happens.
     if(isset($response['status']) === true && $response['status']['code'] === 14) {
-      $this->refresh_token($token['refresh_token']);
-      return $this->ecobee($method, $endpoint, $arguments, false);
+      // Authentication token has expired. Refresh your tokens.
+      if ($auto_refresh_token === true) {
+        $this->refresh_token($token['refresh_token']);
+        return $this->ecobee($method, $endpoint, $arguments, false);
+      }
+      else {
+        throw new \Exception($response['status']['message']);
+      }
+    }
+    else if(isset($response['status']) === true && $response['status']['code'] !== 0) {
+      // Any other error
+      throw new \Exception($response['status']['message']);
     }
     else {
       return $response;
