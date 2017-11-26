@@ -41,11 +41,6 @@ abstract class configuration {
   public static $log_api_calls = false;
 
   /**
-   * For any debug output
-   */
-  public static $debug = false;
-
-  /**
    * This gets set to true during setup to help with some output.
    */
   public static $setup = false;

@@ -1,6 +1,6 @@
 start transaction;
 
-create database `sqlbee`;
+create database `sqlbee` collate=utf8_unicode_ci;
 use `sqlbee`;
 
 create table `api_log` (
@@ -12,6 +12,14 @@ create table `api_log` (
   `timestamp` timestamp not null default current_timestamp,
   `deleted` tinyint(1) not null default '0',
   primary key (`api_log_id`)
+) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
+
+create table `error_log` (
+  `error_log_id` int(10) unsigned not null auto_increment,
+  `timestamp` timestamp not null default current_timestamp,
+  `json_error` text not null,
+  `deleted` tinyint(1) unsigned not null default '0',
+  primary key (`error_log_id`)
 ) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
 
 create table `thermostat` (

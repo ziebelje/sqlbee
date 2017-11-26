@@ -7,6 +7,8 @@ class sqlbee {
 
   private $mysqli;
 
+  private $error;
+
   /**
    * Constructor; create the database connection and start a transaction.
    */
@@ -22,17 +24,14 @@ class sqlbee {
       throw new \Exception($this->mysqli->connect_error . '(' . $this->mysqli->connect_errno . ')');
     }
 
+    set_error_handler(array($this, 'error_handler'));
+    set_exception_handler(array($this, 'exception_handler'));
+    register_shutdown_function(array($this, 'shutdown_handler'));
+
     $this->mysqli->query('start transaction') or die($this->mysqli->error);
 
     // Everything in this script is done in UTC time.
     date_default_timezone_set('UTC');
-  }
-
-  /**
-   * Commit the open transaction.
-   */
-  public function __destruct() {
-    $this->mysqli->query('commit') or die($this->mysqli->error);
   }
 
   /**
@@ -54,8 +53,9 @@ class sqlbee {
 
     // Authorize/token endpoints don't use the /1/ in the URL. Everything else
     // does.
-    if($endpoint !== 'authorize' && $endpoint !== 'token') {
-      $endpoint = '/1/' . $endpoint;
+    $full_endpoint = $endpoint;
+    if($full_endpoint !== 'authorize' && $full_endpoint !== 'token') {
+      $full_endpoint = '/1/' . $full_endpoint;
 
       // For non-authorization endpoints, add the access_token header.
       $query = 'select * from token order by token_id desc limit 1';
@@ -66,9 +66,9 @@ class sqlbee {
       ));
     }
     else {
-      $endpoint = '/' . $endpoint;
+      $full_endpoint = '/' . $full_endpoint;
     }
-    $url = 'https://api.ecobee.com' . $endpoint;
+    $url = 'https://api.ecobee.com' . $full_endpoint;
 
     if($method === 'GET') {
       $url .= '?' . http_build_query($arguments);
@@ -95,7 +95,7 @@ class sqlbee {
         )
         values(
           "' . $this->mysqli->real_escape_string($method) . '",
-          "' . $this->mysqli->real_escape_string($endpoint) . '",
+          "' . $this->mysqli->real_escape_string($full_endpoint) . '",
           "' . $this->mysqli->real_escape_string(json_encode($arguments)) . '",
           "' . $this->mysqli->real_escape_string($curl_response) . '"
         )
@@ -575,4 +575,100 @@ class sqlbee {
       return $thermostat;
     }
   }
+
+  /**
+   * Catches any non-exception errors (like requiring a file that does not
+   * exist) so the script can finish nicely instead of dying and rolling back
+   * the databaes transaction.
+   *
+   * @param number $code
+   * @param string $message
+   * @param string $file
+   * @param number $line
+   */
+  public function error_handler($code, $message, $file, $line) {
+    $this->error = array(
+      'code' => $code,
+      'message' => $message,
+      'file' => $file,
+      'line' => $line,
+      'backtrace' => debug_backtrace(false)
+    );
+
+    die(); // Do not continue execution; shutdown handler will now run.
+  }
+
+  /**
+   * Catches uncaught exceptions so the script can finish nicely instead of
+   * dying and rolling back the database transaction.
+   *
+   * @param Exceptoion $e
+   */
+  public function exception_handler($e) {
+    $this->error = array(
+      'code' => $e->getCode(),
+      'message' => $e->getMessage(),
+      'file' => $e->getFile(),
+      'line' => $e->getLine(),
+      'backtrace' => $e->getTrace()
+    );
+
+    die(); // Do not continue execution; shutdown handler will now run.
+  }
+
+  /**
+   * Runs last, checks one final time for errors. If any errors or exceptions
+   * happened, log them to the error_log table, echo a few last words, then
+   * die nicely.
+   */
+  public function shutdown_handler() {
+    try {
+      // If I didn't catch an error/exception with my handlers, look here...this
+      // will catch fatal errors that I can't.
+      $error = error_get_last();
+      if($error !== null) {
+        $this->error = array(
+          'code' => $error['type'],
+          'message' => $error['message'],
+          'file' => $error['file'],
+          'line' => $error['line'],
+          'backtrace' => debug_backtrace(false)
+        );
+      }
+
+      if(isset($this->error) === true) {
+        $query = '
+          insert into error_log(
+            `json_error`
+          )
+          values(
+            "' . $this->mysqli->real_escape_string(json_encode($this->error)) . '"
+          )
+        ';
+        $this->mysqli->query($query) or die($this->mysqli->error);
+        $this->mysqli->query('commit') or die($this->mysqli->error);
+
+        die('An error occured, check the error_log table for more details. Please report the issue at https://github.com/ziebelje/sqlbee/issues.' . PHP_EOL);
+      }
+      else {
+        $this->mysqli->query('commit') or die($this->mysqli->error);
+      }
+
+    }
+    catch(\Exception $e) {
+      // If something breaks above, just spit out some stuff to be helpful. This
+      // will only catch actual exceptions, not errors.
+      var_dump($this->error);
+      print_r(array(
+        'code' => $e->getCode(),
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'backtrace' => $e->getTrace()
+      ));
+      $this->mysqli->query('commit') or die($this->mysqli->error);
+      die('An error occured that could not be logged. See above for more details. Please report the issue at https://github.com/ziebelje/sqlbee/issues.' . PHP_EOL);
+    }
+  }
+
 }
