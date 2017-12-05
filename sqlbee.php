@@ -363,7 +363,48 @@ class sqlbee {
             'includeEquipmentStatus' => true,
             'includeNotificationSettings' => true,
             'includeVersion' => true,
+            'includePrivacy' => true,
+            'includeAudio' => true,
             'includeSensors' => true
+
+            /**
+             * 'includeReminders' => true
+             *
+             * While documented, this is not available for general API use
+             * unless you are a technician user.
+             *
+             * The reminders and the includeReminders flag are something extra
+             * for ecobee Technicians. It allows them to set and receive
+             * reminders with more detail than the usual alert reminder type.
+             * These reminders are only available to Technician users, which
+             * is why you aren't seeing any new information when you set that
+             * flag to true. Thanks for pointing out the lack of documentation
+             * regarding this. We'll get this updated as soon as possible.
+             *
+             *
+             * https://getsatisfaction.com/api/topics/what-does-includereminders-do-when-calling-get-thermostat?rfm=1
+             */
+
+            /**
+             * 'includeSecuritySettings' => true
+             *
+             * While documented, this is not made available for general API
+             * use unless you are a utility. If you try to include this an
+             * "Authentication failed" error will be returned.
+             *
+             * Special accounts such as Utilities are permitted an alternate
+             * method of authorization using implicit authorization. This
+             * method permits the Utility application to authorize against
+             * their own specific account without the requirement of a PIN.
+             * This method is limited to special contractual obligations and
+             * is not available for 3rd party applications who are not
+             * Utilities.
+             *
+             * https://www.ecobee.com/home/developer/api/documentation/v1/objects/SecuritySettings.shtml
+             * https://www.ecobee.com/home/developer/api/documentation/v1/auth/auth-intro.shtml
+             *
+             */
+
           )
         ))
       )
@@ -398,8 +439,10 @@ class sqlbee {
           json_oem_cfg = "' . $this->mysqli->real_escape_string(json_encode($thermostat['oemCfg'])) . '",
           json_equipment_status = "' . $this->mysqli->real_escape_string(trim($thermostat['equipmentStatus']) !== '' ? json_encode(explode(',', $thermostat['equipmentStatus'])) : json_encode(array())) . '",
           json_notification_settings = "' . $this->mysqli->real_escape_string(json_encode($thermostat['notificationSettings'])) . '",
+          json_privacy = "' . $this->mysqli->real_escape_string(json_encode($thermostat['privacy'])) . '",
           json_version = "' . $this->mysqli->real_escape_string(json_encode($thermostat['version'])) . '",
-          json_remote_sensors = "' . $this->mysqli->real_escape_string(json_encode($thermostat['remoteSensors'])) . '"
+          json_remote_sensors = "' . $this->mysqli->real_escape_string(json_encode($thermostat['remoteSensors'])) . '",
+          json_audio = "' . $this->mysqli->real_escape_string(json_encode($thermostat['audio'])) . '"
         where
           identifier = "' . $thermostat['identifier'] . '"
       ';

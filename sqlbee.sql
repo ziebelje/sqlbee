@@ -48,8 +48,10 @@ create table `thermostat` (
   `json_oem_cfg` text,
   `json_equipment_status` text,
   `json_notification_settings` text,
+  `json_privacy` text,
   `json_version` text,
   `json_remote_sensors` text,
+  `json_audio` text,
   `deleted` tinyint(1) not null default '0',
   primary key (`thermostat_id`),
   unique key `identifier` (`identifier`)
