@@ -412,11 +412,22 @@ class sqlbee {
 
     // Update each thermostat with the actual and desired values.
     foreach($response['thermostatList'] as $thermostat) {
-      $runtime = json_encode($thermostat['runtime']);
-      $weather = json_encode($thermostat['weather']);
-      $equipment_status = trim($thermostat['equipmentStatus']) !== '' ? json_encode(explode(',', $thermostat['equipmentStatus'])) : json_encode(array());
-      $program = json_encode($thermostat['program']);
-      $settings = json_encode($thermostat['settings']);
+      $query = '
+        select
+          thermostat_id
+        from
+          thermostat
+        where
+          identifier = "' . $this->mysqli->real_escape_string($thermostat['identifier']) . '"
+      ';
+      $result = $this->mysqli->query($query) or die($this->mysqli->error);
+      if($result->num_rows === 1) {
+        $row = $result->fetch_assoc();
+        $thermostat_id = $row['thermostat_id'];
+      }
+      else {
+        throw new \Exception('Invalid thermostat identifier');
+      }
 
       $query = '
         update
@@ -444,9 +455,72 @@ class sqlbee {
           json_remote_sensors = "' . $this->mysqli->real_escape_string(json_encode($thermostat['remoteSensors'])) . '",
           json_audio = "' . $this->mysqli->real_escape_string(json_encode($thermostat['audio'])) . '"
         where
-          identifier = "' . $thermostat['identifier'] . '"
+          thermostat_id = ' . $thermostat_id . '
       ';
       $this->mysqli->query($query) or die($this->mysqli->error);
+
+      // Mark all sensors as deleted
+      $query = '
+        update
+          sensor
+        set
+          deleted = 1
+        where
+          thermostat_id = "' . $this->mysqli->real_escape_string($thermostat_id) . '"
+      ';
+      $this->mysqli->query($query) or die($this->mysqli->error);
+
+      // Create/update sensors.
+      foreach($thermostat['remoteSensors'] as $sensor) {
+        // Check to see if this thermostat already exists.
+        $query = '
+          select
+            *
+          from
+            sensor
+          where
+                thermostat_id = "' . $this->mysqli->real_escape_string($thermostat_id) . '"
+            and identifier = "' . $this->mysqli->real_escape_string($sensor['id']) . '"
+        ';
+        $result = $this->mysqli->query($query) or die($this->mysqli->error);
+
+        // If this sensor does not already exist, create it.
+        if($result->num_rows === 0) {
+          $query = '
+            insert into sensor(
+              thermostat_id,
+              identifier,
+              name,
+              type,
+              code,
+              in_use,
+              json_capability
+            )
+            values(
+              "' . $this->mysqli->real_escape_string($thermostat_id) . '",
+              "' . $this->mysqli->real_escape_string($sensor['id']) . '",
+              "' . $this->mysqli->real_escape_string($sensor['name']) . '",
+              "' . $this->mysqli->real_escape_string($sensor['type']) . '",
+              ' . ((isset($sensor['code']) === true) ? ('"' . $this->mysqli->real_escape_string($sensor['code']) . '"') : ('null')) . ',
+              "' . ($sensor['inUse'] === true ? '1' : '0') . '",
+              "' . $this->mysqli->real_escape_string(json_encode($sensor['capability'])) . '"
+            )';
+          $result = $this->mysqli->query($query) or die($this->mysqli->error);
+        }
+        else {
+          $query = '
+            update sensor set
+              thermostat_id = "' . $this->mysqli->real_escape_string($thermostat_id) . '",
+              name = "' . $this->mysqli->real_escape_string($sensor['name']) . '",
+              type = "' . $this->mysqli->real_escape_string($sensor['type']) . '",
+              code = ' . ((isset($sensor['code']) === true) ? ('"' . $this->mysqli->real_escape_string($sensor['code']) . '"') : ('null')) . ',
+              in_use = "' . ($sensor['inUse'] === true ? '1' : '0') . '",
+              json_capability = "' . $this->mysqli->real_escape_string(json_encode($sensor['capability'])) . '",
+              deleted = 0
+          ';
+          $result = $this->mysqli->query($query) or die($this->mysqli->error);
+        }
+      }
     }
   }
 

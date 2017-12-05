@@ -57,6 +57,21 @@ create table `thermostat` (
   unique key `identifier` (`identifier`)
 ) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
 
+create table `sensor` (
+  `sensor_id` int(10) unsigned not null auto_increment,
+  `thermostat_id` int(10) unsigned not null,
+  `identifier` varchar(255) collate utf8_unicode_ci not null,
+  `name` varchar(255) collate utf8_unicode_ci not null,
+  `type` varchar(255) collate utf8_unicode_ci not null,
+  `code` varchar(255) collate utf8_unicode_ci default null,
+  `in_use` tinyint(1) not null,
+  `json_capability` text collate utf8_unicode_ci not null,
+  `deleted` tinyint(1) not null default '0',
+  primary key (`sensor_id`),
+  key `thermostat_id` (`thermostat_id`),
+  constraint `sensor_ibfk_1` foreign key (`thermostat_id`) references `thermostat` (`thermostat_id`)
+) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
+
 create table `runtime_report` (
   `runtime_report_id` int(10) unsigned not null auto_increment,
   `thermostat_id` int(10) unsigned not null,
