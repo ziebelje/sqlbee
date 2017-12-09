@@ -36,4 +36,5 @@ _This project uses the MIT License, which means you can do whatever you want wit
 8. Set up a cron job to run `cron.php` at your desired interval. Example crontab entry: `* * * * * php -f /var/www/sqlbee/cron.php`.
 
 ## Notes
-- After getting the project running, you might notice that roughly the past 15 minutes of data in runtime_report have missing data. This is because the API reports these rows but the ecobee only transmits it's local data every 15 minutes.
+- After getting the project running, you might notice that roughly the past 15 minutes of rows in runtime_report have missing data. This is because the API reports these rows but the ecobee only transmits it's local data every 15 minutes.
+- Storage space is fairly minimal. Syncing thermostat history uses about 8,500 rows / 1.5MB per month per thermostat. Syncing sensor history uses about 8,500 rows / 1.5MB per month per sensor (the thermostat counts as a sensor).

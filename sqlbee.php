@@ -508,6 +508,7 @@ class sqlbee {
           $result = $this->mysqli->query($query) or die($this->mysqli->error);
         }
         else {
+          $row = $result->fetch_assoc();
           $query = '
             update sensor set
               thermostat_id = "' . $this->mysqli->real_escape_string($thermostat_id) . '",
@@ -517,6 +518,8 @@ class sqlbee {
               in_use = "' . ($sensor['inUse'] === true ? '1' : '0') . '",
               json_capability = "' . $this->mysqli->real_escape_string(json_encode($sensor['capability'])) . '",
               deleted = 0
+            where
+              sensor_id = ' . $row['sensor_id'] . '
           ';
           $result = $this->mysqli->query($query) or die($this->mysqli->error);
         }
@@ -537,7 +540,7 @@ class sqlbee {
       select
         *
       from
-        runtime_report
+        runtime_report_thermostat
       where
         thermostat_id = "' . $thermostat_id_escaped . '"
       order by
@@ -573,11 +576,29 @@ class sqlbee {
 
   /**
    * Get the runtime report data for a specified thermostat. Updates the
-   * runtime_report table.
+   * runtime_report_thermostat and runtime_report_sensor tables.
    *
    * @param int $thermostat_id
    */
   private function sync_runtime_report_($thermostat_id, $begin_gmt, $end_gmt) {
+    $thermostat = $this->get_thermostat($thermostat_id);
+
+    $begin_date = date('Y-m-d', $begin_gmt);
+    $begin_interval = date('H', $begin_gmt) * 12 + round(date('i', $begin_gmt) / 5);
+
+    $end_date = date('Y-m-d', $end_gmt);
+    $end_interval = date('H', $end_gmt) * 12 + round(date('i', $end_gmt) / 5);
+
+    if(configuration::$setup === true) {
+      echo "\r";
+      $string = date('m/d/Y', $begin_gmt) . ' > ' . date('m/d/Y', $end_gmt);
+      echo ' │     ' . $string;
+      for($i = 0; $i < 33 - strlen($string); $i++) {
+        echo ' ';
+      }
+      echo '│';
+    }
+
     $columns = array(
       'auxHeat1' => 'auxiliary_heat_1',
       'auxHeat2' => 'auxiliary_heat_2',
@@ -607,24 +628,6 @@ class sqlbee {
       'zoneOccupancy' => 'zone_occupancy',
     );
 
-    $thermostat = $this->get_thermostat($thermostat_id);
-
-    $begin_date = date('Y-m-d', $begin_gmt);
-    $begin_interval = date('H', $begin_gmt) * 12 + round(date('i', $begin_gmt) / 5);
-
-    $end_date = date('Y-m-d', $end_gmt);
-    $end_interval = date('H', $end_gmt) * 12 + round(date('i', $end_gmt) / 5);
-
-    if(configuration::$setup === true) {
-      echo "\r";
-      $string = date('m/d/Y', $begin_gmt) . ' > ' . date('m/d/Y', $end_gmt);
-      echo ' │     ' . $string;
-      for($i = 0; $i < 33 - strlen($string); $i++) {
-        echo ' ';
-      }
-      echo '│';
-    }
-
     $response = $this->ecobee(
       'GET',
       'runtimeReport',
@@ -652,9 +655,15 @@ class sqlbee {
       $row = array_map('trim', $row);
       $row = array_map(array($this->mysqli, 'real_escape_string'), $row);
 
-      // Date and time are first two columns
+      // Date and time are first two columns of the returned data.
       list($date, $time) = array_splice($row, 0, 2);
-      array_unshift($row, $thermostat_id, date('Y-m-d H:i:s', strtotime($date . ' ' . $time)));
+
+      // Put thermostat_id and date onto the front of the array to be inserted.
+      array_unshift(
+        $row,
+        $thermostat_id,
+        date('Y-m-d H:i:s', strtotime($date . ' ' . $time))
+      );
 
       $insert = '("' . implode('","', $row) . '")';
       $insert = str_replace('""', 'null', $insert);
@@ -665,8 +674,104 @@ class sqlbee {
       $on_duplicate_keys[] = '`' . $column . '` = values(`' . $column . '`)';
     }
 
-    $query = 'insert into runtime_report(`' . implode('`,`', array_merge(array('thermostat_id', 'timestamp'), array_values($columns))) . '`) values' . implode(',', $inserts) . ' on duplicate key update ' . implode(',', $on_duplicate_keys);
+    $query = 'insert into runtime_report_thermostat(`' . implode('`,`', array_merge(array('thermostat_id', 'timestamp'), array_values($columns))) . '`) values' . implode(',', $inserts) . ' on duplicate key update ' . implode(',', $on_duplicate_keys);
     $this->mysqli->query($query) or die($this->mysqli->error);
+
+
+    // Check timestamp columns on both tables...I think the default value and the on update value can be removed as we use ecobee values here
+
+    /**
+     * runtime_report_sensor
+     */
+
+    // Get a list of all sensors in the database for this thermostat.
+    $query = 'select * from sensor where thermostat_id = ' . $thermostat_id;
+    $result = $this->mysqli->query($query) or die($this->mysqli->error);
+
+    $sensors = array();
+    while($row = $result->fetch_assoc()) {
+      $sensors[$row['identifier']] = $row;
+    }
+
+    // Create a sensor metric array keyed by the silly identifier.
+    $sensor_metrics = array();
+    foreach($response['sensorList'][0]['sensors'] as $sensor_metric) {
+      $sensor_metrics[$sensor_metric['sensorId']] = $sensor_metric;
+
+      $sensor_identifier = substr(
+        $sensor_metric['sensorId'],
+        0,
+        strrpos($sensor_metric['sensorId'], ':')
+      );
+
+      $sensor_metrics[$sensor_metric['sensorId']]['sensor'] = $sensors[$sensor_identifier];
+    }
+
+    // Construct a more sensible data object that maps everything properly.
+    $objects = array();
+    foreach($response['sensorList'][0]['data'] as $i => $row) {
+      $row = explode(',', $row);
+      $row = array_map('trim', $row);
+      $row = array_map(array($this->mysqli, 'real_escape_string'), $row);
+
+      // Date and time are first two columns of the returned data.
+      $date = $row[0];
+      $time = $row[1];
+      $timestamp = date('Y-m-d H:i:s', strtotime($date . ' ' . $time));
+
+      for($j = 2; $j < count($row); $j++) {
+        $column = $response['sensorList'][0]['columns'][$j];
+        $sensor_metric = $sensor_metrics[$column];
+        $sensor = $sensor_metric['sensor'];
+        $sensor_id = $sensor['sensor_id'];
+        $sensor_metric_type = $sensor_metric['sensorType'];
+
+        // Need to generate a unique key per row per sensor as each row of
+        // returned data represents data from multiple sensors. ಠ_ಠ
+        $key = $i . '_' . $sensor_id;
+
+        if(isset($objects[$key]) === false) {
+          $objects[$key] = array(
+            'thermostat_id' => $thermostat_id,
+            'sensor_id' => $sensor_id,
+            'timestamp' => $timestamp,
+            'temperature' => null,
+            'humidity' => null,
+            'occupancy' => null
+          );
+        }
+        if($row[$j] !== '' && $row[$j] !== 'null') {
+          $objects[$key][$sensor_metric_type] = $row[$j];
+        }
+      }
+    }
+
+    // Get a nice integer-indexed array from the silly keyed array from earlier.
+    $objects = array_values($objects);
+
+    // And finally do the actual insert
+    $inserts = array();
+    $on_duplicate_keys = array();
+    if(count($objects) > 0) {
+      $columns = array_keys($objects[0]);
+
+      foreach($objects as $object) {
+        $insert = '("' . implode('","', array_values($object)) . '")';
+        $insert = str_replace('""', 'null', $insert);
+        $inserts[] = $insert;
+      }
+
+      foreach($columns as $column) {
+        $on_duplicate_keys[] = '`' . $column . '` = values(`' . $column . '`)';
+      }
+
+      $query = '
+        insert into
+          runtime_report_sensor(`' . implode('`,`', $columns) . '`)
+        values' . implode(',', $inserts) . '
+        on duplicate key update ' . implode(',', $on_duplicate_keys);
+      $this->mysqli->query($query) or die($this->mysqli->error);
+    }
   }
 
   /**

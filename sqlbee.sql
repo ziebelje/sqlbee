@@ -72,10 +72,10 @@ create table `sensor` (
   constraint `sensor_ibfk_1` foreign key (`thermostat_id`) references `thermostat` (`thermostat_id`)
 ) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
 
-create table `runtime_report` (
-  `runtime_report_id` int(10) unsigned not null auto_increment,
+create table `runtime_report_thermostat` (
+  `runtime_report_thermostat_id` int(10) unsigned not null auto_increment,
   `thermostat_id` int(10) unsigned not null,
-  `timestamp` timestamp not null default current_timestamp on update current_timestamp,
+  `timestamp` timestamp not null,
   `auxiliary_heat_1` int(10) unsigned default null,
   `auxiliary_heat_2` int(10) unsigned default null,
   `auxiliary_heat_3` int(10) unsigned default null,
@@ -103,9 +103,25 @@ create table `runtime_report` (
   `zone_hvac_mode` varchar(255) default null,
   `zone_occupancy` int(10) unsigned default null,
   `deleted` tinyint(1) not null default '0',
-  primary key (`runtime_report_id`),
+  primary key (`runtime_report_thermostat_id`),
   unique key `thermostat_id_timestamp` (`thermostat_id`,`timestamp`),
-  constraint `runtime_report_ibfk_1` foreign key (`thermostat_id`) references `thermostat` (`thermostat_id`)
+  constraint `runtime_report_thermostat_ibfk_1` foreign key (`thermostat_id`) references `thermostat` (`thermostat_id`)
+) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
+
+create table `runtime_report_sensor` (
+  `runtime_report_sensor_id` int(10) unsigned not null auto_increment,
+  `thermostat_id` int(10) unsigned not null,
+  `sensor_id` int(10) unsigned not null,
+  `timestamp` timestamp not null,
+  `temperature` decimal(4,1) default null,
+  `humidity` int(10) unsigned default null,
+  `occupancy` tinyint(1) default null,
+  `deleted` tinyint(1) not null default '0',
+  primary key (`runtime_report_sensor_id`),
+  key `sensor_id` (`sensor_id`),
+  key `thermostat_id` (`thermostat_id`),
+  constraint `runtime_report_sensor_ibfk_1` foreign key (`sensor_id`) references `sensor` (`sensor_id`),
+  constraint `runtime_report_sensor_ibfk_2` foreign key (`thermostat_id`) references `thermostat` (`thermostat_id`)
 ) engine=innodb default charset=utf8 collate=utf8_unicode_ci;
 
 create table `token` (

@@ -1,15 +1,5 @@
 <?php
 
-/**
- * To clear the database:
- * set foreign_key_checks = 0;
- * truncate api_log;
- * truncate runtime_report;
- * truncate token;
- * truncate thermostat;
- * set foreign_key_checks = 1;
- */
-
 namespace sqlbee;
 require_once 'sqlbee.php';
 
