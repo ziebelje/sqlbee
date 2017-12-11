@@ -118,7 +118,7 @@ create table `runtime_report_sensor` (
   `occupancy` tinyint(1) default null,
   `deleted` tinyint(1) not null default '0',
   primary key (`runtime_report_sensor_id`),
-  key `sensor_id` (`sensor_id`),
+  unique key `sensor_id_timestamp` (`sensor_id`,`timestamp`),
   key `thermostat_id` (`thermostat_id`),
   constraint `runtime_report_sensor_ibfk_1` foreign key (`sensor_id`) references `sensor` (`sensor_id`),
   constraint `runtime_report_sensor_ibfk_2` foreign key (`thermostat_id`) references `thermostat` (`thermostat_id`)
