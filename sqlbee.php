@@ -612,6 +612,7 @@ class sqlbee {
       'economizer' => 'economizer',
       'fan' => 'fan',
       'humidifier' => 'humidifier',
+      'hvacMode' => 'hvac_mode',
       'outdoorHumidity' => 'outdoor_humidity',
       'outdoorTemp' => 'outdoor_temperature',
       'sky' => 'sky',
@@ -619,13 +620,14 @@ class sqlbee {
       'wind' => 'wind',
       'zoneAveTemp' => 'zone_average_temperature',
       'zoneCalendarEvent' => 'zone_calendar_event',
+      'zoneClimate' => 'zone_climate',
       'zoneCoolTemp' => 'zone_cool_temperature',
       'zoneHeatTemp' => 'zone_heat_temperature',
       'zoneHumidity' => 'zone_humidity',
       'zoneHumidityHigh' => 'zone_humidity_high',
       'zoneHumidityLow' => 'zone_humidity_low',
       'zoneHvacMode' => 'zone_hvac_mode',
-      'zoneOccupancy' => 'zone_occupancy',
+      'zoneOccupancy' => 'zone_occupancy'
     );
 
     $response = $this->ecobee(
