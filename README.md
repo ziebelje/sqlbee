@@ -10,6 +10,8 @@
 ## About
 sqlbee is a simple application that queries the ecobee API and extracts thermostat and runtime report data into a mySQL database. This is essentially the data from the System Monitor section of ecobee Home IQ.
 
+If you like this project, check out my other ecobee-related project: [beestat.io](https://beestat.io). It takes all the data from sqlbee and turns it into powerful graphs.
+
 _This project uses the MIT License, which means you can do whatever you want with the code and that I am not liable for anything. Have fun!_
 
 ### What does it do?
