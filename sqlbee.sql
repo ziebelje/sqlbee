@@ -128,8 +128,8 @@ create table `runtime_report_sensor` (
 
 create table `token` (
   `token_id` int(10) unsigned not null auto_increment,
-  `access_token` char(32) not null,
-  `refresh_token` char(32) not null,
+  `access_token` text not null,
+  `refresh_token` text not null,
   `timestamp` timestamp not null default current_timestamp,
   `deleted` tinyint(4) not null default '0',
   primary key (`token_id`)
