@@ -24,9 +24,9 @@ echo ' │     My Apps > Add Application        │' . PHP_EOL;
 echo ' │                                      │' . PHP_EOL;
 echo ' │  2. Enter your PIN                   │' . PHP_EOL;
 echo ' │                                      │' . PHP_EOL;
-echo ' │             ┌──────────┐             │' . PHP_EOL;
-echo ' │             │   ' . strtoupper($response['ecobeePin']) . '   │             │' . PHP_EOL;
-echo ' │             └──────────┘             │' . PHP_EOL;
+echo ' │           ┌───────────────┐          │' . PHP_EOL;
+echo ' │           │   ' . strtoupper($response['ecobeePin']) . '   │          │' . PHP_EOL;
+echo ' │           └───────────────┘          │' . PHP_EOL;
 echo ' │                                      │' . PHP_EOL;
 echo ' │      Waiting for authorization       │' . PHP_EOL;
 echo ' │    □□□□□□□□□□□□□□□□□□□□□□□□□□□□□□    │';
@@ -70,7 +70,8 @@ while($bar_width_remain-- >= 0) {
 echo PHP_EOL;
 
 if($authorized === true) {
-  echo ' │             👍 SUCCESS! 👍             │' . PHP_EOL;
+  echo ' │                                      │' . PHP_EOL;
+  echo ' │               SUCCESS!               │' . PHP_EOL;
   echo ' │                                      │' . PHP_EOL;
   echo ' │  3. Syncing...                       │' . PHP_EOL;
 
@@ -87,7 +88,7 @@ if($authorized === true) {
   }
   sleep(1);
   echo "\r";
-  echo ' │     ✓ Done                           │';
+  echo ' │     Done                             │';
   sleep (1);
   echo PHP_EOL;
 
@@ -97,7 +98,8 @@ if($authorized === true) {
   echo ' │     up to date.                      │' . PHP_EOL;
 }
 else {
-  echo ' │             👎 FAILURE! 👎             │' . PHP_EOL;
+  echo ' │                                      │' . PHP_EOL;
+  echo ' │               FAILURE!               │' . PHP_EOL;
 }
 
 echo ' │                                      │' . PHP_EOL;
