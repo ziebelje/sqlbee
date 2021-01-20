@@ -652,7 +652,6 @@ class sqlbee {
     $inserts = array();
     $on_duplicate_keys = array();
     foreach($response['reportList'][0]['rowList'] as $row) {
-      $row = substr($row, 0, -1); // Strip the trailing comma from the array.
       $row = explode(',', $row);
       $row = array_map('trim', $row);
       $row = array_map(array($this->mysqli, 'real_escape_string'), $row);
